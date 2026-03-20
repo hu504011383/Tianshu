@@ -14,15 +14,22 @@
 - **AS5600 编码器模拟**：模拟磁编码器功能
 - **设置存储**：将配置信息存储到 Flash
 - **启动图片显示**：支持自定义启动图片显示
+- **PCF8575 GPIO扩展**：使用 PCF8575 芯片扩展 GPIO 引脚，支持最多 16 个虚拟引脚
+- **RGB LED 状态指示**：使用 WS2812 RGB LED 显示系统状态
+- **看门狗定时器**：防止程序卡死，提高系统稳定性
+- **多核处理**：利用 Raspberry Pi Pico 的双核功能
 
 ## 硬件要求
 
 - **主控板**：Raspberry Pi Pico
 - **显示屏**：SSD1306 128x64 OLED 显示屏
-- **通信接口**：I2C（显示屏）、UART（BambuBus）
+- **通信接口**：I2C（显示屏、PCF8575）、UART（BambuBus）
 - **微动开关**：用于检测材料状态
 - **电机**：用于材料的进料和退料
 - **电源**：24转5V 电源
+- **GPIO扩展**：PCF8575 芯片（可选，用于扩展 GPIO 引脚）
+- **RGB LED**：WS2812 RGB LED（用于状态指示）
+- **电机驱动**：DRV8833 电机驱动芯片
 
 ## 软件架构
 
@@ -33,6 +40,7 @@
 3. **SSD1306 显示**：用户界面和状态显示
 4. **电机控制**：材料的进料和退料控制
 5. **设置存储**：配置信息的存储和读取
+6. **PCF8575 GPIO扩展**：GPIO引脚扩展，支持虚拟引脚操作
 
 ### 项目结构
 
@@ -45,6 +53,7 @@ src/
 ├── Motor.cpp/h       # 电机控制
 ├── ssd1306_display.cpp/h   # OLED 显示屏控制
 ├── settings_storage.cpp/h  # 设置存储
+├── PCF8575_PinMap.cpp/h    # PCF8575 GPIO扩展引脚映射
 ├── FIFO_buffer.c/h   # 环形缓冲区
 ├── time64.cpp/h      # 时间工具
 └── crc_bus.c/h       # CRC 校验
@@ -105,6 +114,32 @@ pio run --target clean
 - **BambuBus**：实现与 Bambu Lab 打印机的通信协议
 - **数据包类型**：支持材料运动、在线检测、NFC 检测等数据包
 
+### PCF8575 GPIO扩展
+
+- **引脚扩展**：使用 PCF8575 芯片扩展 16 个 GPIO 引脚
+- **虚拟引脚**：将 PCF8575 的物理引脚映射为虚拟引脚（50-65）
+- **I2C 通信**：通过 I2C 总线与主控板通信
+- **功能支持**：支持数字输入/输出、PWM 输出等操作
+- **引脚映射**：
+  - 虚拟引脚 50-57 → PCF8575 物理引脚 0-7
+  - 虚拟引脚 58-65 → PCF8575 物理引脚 10-17
+- **使用方法**：
+  - 调用 `PCF8575_init()` 初始化
+  - 使用 `PCF8575_digitalWrite()` 设置引脚电平
+  - 使用 `PCF8575_digitalRead()` 读取引脚状态
+  - 在 `loop()` 中调用 `PCF8575_update()` 更新引脚状态
+
+### RGB LED 状态指示
+
+- **LED 类型**：WS2812 RGB LED
+- **引脚定义**：GPIO 16
+- **状态颜色**：
+  - **红色**：停止/故障/取消操作
+  - **绿色**：进料/退料动作中
+  - **蓝色**：待机/正常状态
+- **亮度控制**：固定最大亮度（无PWM）
+- **功能**：实时显示系统运行状态，便于用户了解设备工作情况
+
 
 ## 调试功能
 
@@ -138,12 +173,62 @@ pio run --target clean
 
 本项目采用 GNU Affero General Public License v3.0 许可证，详见 LICENSE 文件。
 
+### 第三方库许可证
+
+本项目使用了以下第三方开源库，各库许可证如下：
+
+| 库名称 | 许可证 | 说明 |
+|--------|--------|------|
+| Adafruit SSD1306 | BSD License | OLED显示屏驱动 |
+| Adafruit GFX Library | BSD License | 图形库 |
+| Adafruit NeoPixel | LGPL-3.0 | RGB LED控制 |
+| U8g2 | BSD-2-Clause | 显示屏驱动库 |
+| PCF8575 | MIT License | GPIO扩展芯片驱动 |
+| AS5600 | MIT License | 磁编码器驱动 |
+| CRC | MIT License | CRC校验库 |
+
+所有第三方库的许可证文件均可在 `lib/` 目录下找到。
+
+## 法律声明
+
+### 项目性质
+本项目是基于社区逆向工程研究的开源实现，与 Bambu Lab 官方无关。BambuBus 是 Bambu Lab 的专有通信协议，本项目仅供学习和研究使用。
+
+### 责任限制
+1. 使用本项目产生的任何法律问题，由使用者自行承担
+2. 项目作者不对因使用本项目导致的任何直接或间接损失承担责任
+3. 使用者应自行评估使用本项目的风险
+
+### 商标声明
+- Bambu Lab、BambuBus 是 Bambu Lab 的注册商标
+- 本项目提及的所有商标归其各自所有者所有
+- 本项目与 Bambu Lab 官方没有任何关联或认可关系
+
+### 安全警告
+1. 本项目涉及3D打印机的材料更换系统，使用不当可能导致设备损坏
+2. 请确保在使用前充分了解项目的工作原理和潜在风险
+3. 建议在测试环境中充分验证后再用于生产环境
+4. 任何DIY行为都表示你已经认清了项目的风险和限制，项目发起者及其相关人员不承担任何责任
+
+### 合规性声明
+1. 本项目仅供个人学习、研究和非商业用途
+2. 商业使用请自行评估法律风险并获得必要的授权
+3. 使用者应遵守当地法律法规，包括但不限于知识产权法、产品安全法等
+
 ## 联系方式
 
 - **QQ群**：981655616
 - **特别鸣谢**：Dxt、林克、道明寺、Yeah、facetruth
-- **通信协议**：PJARCZAK https://github.com/jarczakpawel/BMCU-C-PJARCZAK?tab=readme-ov-file
-- **功能开发**：4AMS模拟 鱼丸粗面
+- **功能开发**：鱼丸粗面（hu504011383）
+
+## 上游项目
+
+本项目基于以下开源项目进行开发和改进：
+
+- **BMCU-C-PJARCZAK**：https://github.com/jarczakpawel/BMCU-C-PJARCZAK
+- **BMCU (karlingen)**：https://github.com/karlingen/BMCU
+- **AP-AMS**：https://github.com/applenana/AP-AMS
+- **TOP-AMS-Firmware (Gitee)**：https://gitee.com/shaolin_workshop/top-ams-firmware
 
 ## 版本历史
 
@@ -160,12 +245,15 @@ https://my.feishu.cn/wiki/N4bXwJpWUirYBFkMr81cw0umn72?from=from_copylink
 | BambuBus DE | 6 | 串口方向控制 |
 | AS5600 SDA | 4 | I2C 数据 |
 | AS5600 SCL | 5 | I2C 时钟 |
+| RGB LED | 16 | WS2812 RGB LED 状态指示 |
 | 微动开关 | 26-29, 57-54 | 通道 1-8 的微动开关 |
 | 按键 | 自定义 | 前进、确认、后退按键 |
+| PCF8575 虚拟引脚 | 50-65 | PCF8575 扩展的虚拟引脚 |
 
 ### I2C 连接
 
 - **SSD1306 显示屏**：SDA -> 4, SCL -> 5, VCC -> 5V, GND -> GND
+- **PCF8575 GPIO扩展**：SDA -> 4, SCL -> 5, VCC -> 5V, GND -> GND, I2C地址 -> 0x20
 
 ## 注意事项
 
@@ -173,5 +261,5 @@ https://my.feishu.cn/wiki/N4bXwJpWUirYBFkMr81cw0umn72?from=from_copylink
 2. 电机控制时请注意电流限制，避免过载
 3. 微动开关的安装位置要准确，确保能正确检测材料状态
 4. 定期检查材料通道，确保材料顺畅
-5. 任何DIY行为都表示你已经认清了项目的风险和限制，项目发起者及其相关人员不承担任何责任。
+5. 任何使用本项目DIY的行为都表示你已经认清了项目的风险和限制，项目发起者及其相关人员不承担任何相关责任。
 
