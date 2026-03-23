@@ -168,7 +168,7 @@ pio run --target clean
 
 ## 许可证
 
-本项目采用 GNU Affero General Public License v3.0 许可证，详见 LICENSE 文件。
+本项目采用CC BY-NC-SA 4.0 许可证，详见 LICENSE 文件。
 
 ### 第三方库许可证
 
